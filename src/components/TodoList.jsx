@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import TodoItem from "./TodoItem";
+import { baseUrl } from "../config/api";
 
 function TodoList() {
   const [todos, setTodos] = useState([]);
@@ -7,7 +8,8 @@ function TodoList() {
 
   async function fetchTodos() {
     setLoading(true);
-    const response = await fetch("http://localhost:8080/api/v1/todos", {
+    const url = `${baseUrl}/api/v1/todos`;
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -31,70 +33,91 @@ function TodoList() {
     const todoName = inputRef.current.value;
 
     if (todoName == "") {
-      alert("Merci de remplir les champs vides");
+      alert("Merci de saisir un nom de tâche");
       return;
     }
+
     const newTodo = { name: todoName, completed: false };
 
-    const response = await fetch(`http://localhost:8080/api/v1/todos/save`, {
-      method: "POST",
-      body: JSON.stringify(newTodo),
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + localStorage.getItem("token"),
-      },
-    });
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/todos/save`, {
+        method: "POST",
+        body: JSON.stringify(newTodo),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+      });
 
-    const data = await response.json();
-    setTodos((previousTodos) => {
-      const newTodos = [...previousTodos, data.data.item];
-      return newTodos;
-    });
+      const data = await response.json();
+      setTodos((previousTodos) => {
+        const newTodos = [...previousTodos, data.data.item];
+        return newTodos;
+      });
+    } catch (error) {
+      console.error(error);
+    }
 
     inputRef.current.value = "";
   };
 
   const deleteTask = async (todoId) => {
-    const filteredTodos = todos.filter((todo) => todo.id != todoId);
     //localStorage.setItem("todos", JSON.stringify(filteredTodos));
-    const response = await fetch(`http://localhost:8080/api/v1/todos/delete/${todoId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + localStorage.getItem("token"),
-      },
-    });
+    try {
+      const response = await fetch(
+        `${baseUrl}/api/v1/todos/delete/${todoId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + localStorage.getItem("token"),
+          },
+        }
+      );
 
-    const data = await response.json();
-    console.log(data);
-    //fetchTodos();
-    setTodos(filteredTodos);
+      const data = await response.json();
+      //console.log(data);
+      //fetchTodos();
+
+      const filteredTodos = todos.filter((todo) => todo.id != todoId);
+      setTodos(filteredTodos);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const completeTask = async (todoId) => {
-    const todo = todos.find((todo) => todo.id === todoId)
+    try {
+      const todo = todos.find((todo) => todo.id === todoId);
+      const requestBody = { ...todo, completed: !todo.completed };
 
-    const response = await fetch(`http://localhost:8080/api/v1/todos/update`, {
-      method: "POST",
-      body: JSON.stringify({ ...todo, completed: !todo.completed }),
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + localStorage.getItem("token"),
-      },
-    });
-
-    const data = await response.json();
-
-    setTodos((previousTodos) => {
-      const newTodos = previousTodos.map((todo) => {
-        if (todo.id == todoId) {
-          return { ...todo, completed: !todo.completed };
+      const response = await fetch(
+        `${baseUrl}/api/v1/todos/update`,
+        {
+          method: "POST",
+          body: JSON.stringify(requestBody),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + localStorage.getItem("token"),
+          },
         }
-        return todo;
+      );
+
+      const data = await response.json();
+
+      setTodos((previousTodos) => {
+        const newTodos = previousTodos.map((todo) => {
+          if (todo.id == todoId) {
+            return { ...todo, completed: !todo.completed };
+          }
+          return todo;
+        });
+        //localStorage.setItem("todos", JSON.stringify(newTodos));
+        return newTodos;
       });
-      //localStorage.setItem("todos", JSON.stringify(newTodos));
-      return newTodos;
-    });
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
